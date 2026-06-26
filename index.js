@@ -9,9 +9,7 @@ const CHATWORK_API_TOKEN = "47f3a071fe49e7259100d70071c986b7";
 const CHATWORK_ROOM_ID = "440162416"; 
 
 // 🔥 3つのURLリスト
-const SANDBOX_URLS = [
-  "https://jhsnlx-8080.csb.app",
-  "https://v52l6d-8080.csb.app",
+const SANDBOX_URLS = [ 
   "https://znpf9v-3000.csb.app"
 ];
 // ===================================================
