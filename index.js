@@ -1,44 +1,70 @@
 import express from 'express';
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ================== 【設定エリア】 ==================
-const SANDBOX_URLS = [
-  "https://jhsnlx-8080.csb.app/",
-  "https://v52l6d-8080.csb.app/"
-];
+const CHATWORK_API_TOKEN = "47f3a071fe49e7259100d70071c986b7";
+const CHATWORK_ROOM_ID = "440162416"; 
+
+// まずは1個目のターゲットで実験します
+const TARGET_URL = "https://jhsnlx-8080.csb.app";
 // ===================================================
 
-app.get('/', (req, res) => {
-  const nowStr = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  console.log(`[${nowStr}] ⏰ 【撃ち逃げモード】サーバー立てる君が起動しました。`);
+async function sendChatworkMessage(message) {
+  const res = await fetch(
+    `https://api.chatwork.com/v2/rooms/${CHATWORK_ROOM_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        "X-ChatWorkToken": CHATWORK_API_TOKEN,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ body: message }),
+    }
+  );
+}
 
-  // 各サブ垢に「返事を待たずに」一斉にノックを送りつける
-  SANDBOX_URLS.forEach((url) => {
-    const baseUrl = url.endsWith('/') ? url.slice(0, -1) : url;
-    
-    console.log(`🚀 【投函】起動リクエストを送信中 -> ${baseUrl}`);
+app.get('/', async (req, res) => {
+  console.log(`[${new Date().toLocaleString("ja-JP")}] HTML強奪ミッション開始...`);
 
-    // 🔥 await をつけないことで、相手の返事やクッション画面を待たずに次へ進む！
-    fetch(`${baseUrl}/api/ping`, {
-      method: "GET",
+  try {
+    const response = await fetch(TARGET_URL, {
       headers: { 
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", // ブラウザのフリをする
-        "X-CSB-Skip-Incap-Check": "true", // Yes Previewを飛ばすおまじない
-        "Accept": "application/json",
-        "Connection": "keep-alive"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
       }
-    }).then((response) => {
-      // 万が一Vercelが終了する前に返ってきたらログを出すだけ（エラーでも無視）
-      console.log(`📡 【バックグラウンド反応】${baseUrl} からステータス: ${response.status} が返りました`);
-    }).catch((err) => {
-      // 途中で切断されてもコンテナ起動の電気信号は届いているので問題なし！
-      console.log(`⏳ 【バックグラウンド切断】${baseUrl} への送信処理を終了しました`);
     });
-  });
 
-  // ⚡ サブ垢の返事を一切待たずに、Vercel側は1秒で「送信完了！」と処理を終わらせる
-  res.status(200).send("すべてのCodeSandboxへノンストップで叩き起こし信号を撃ち込みました。");
+    // 相手から返ってきた生のHTMLテキストをそのままぶっこ抜く
+    const rawHtml = await response.text();
+
+    // 🔍 Vercelのログ（コンソール）に出力
+    console.log("--- 奪取した生のHTMLここから ---");
+    console.log(rawHtml);
+    console.log("--- 奪取した生のHTMLここまで ---");
+
+    // 💬 長すぎるHTMLはChatworkが拒否する場合があるので、最初の1000文字だけ通知してみる
+    const previewText = rawHtml.slice(0, 1000);
+    
+    await sendChatworkMessage(`📺 【HTML強奪結果】
+ステータスコード: ${response.status}
+文字数: ${rawHtml.length}文字
+
+🔻冒頭1000文字の生データ:
+${previewText}`);
+
+    res.status(200).send("HTMLの強奪と送信が完了しました。ログまたはChatworkを確認してください。");
+
+  } catch (error) {
+    console.error("強奪失敗:", error);
+    await sendChatworkMessage(`❌ HTMLの強奪中にエラーが発生しました:\n${error.message}`);
+    res.status(500).send(error.message);
+  }
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`検証サーバー起動中: ${PORT}`));
 
 export default app;
